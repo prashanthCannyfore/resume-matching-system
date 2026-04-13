@@ -5,7 +5,8 @@ from app.api.services.parser import (
     extract_education,
     extract_skill_experience
 )
-
+from fastapi import UploadFile, HTTPException 
+from sqlalchemy.ext.asyncio import AsyncSession
 async def process_resume(file: UploadFile, db: AsyncSession):
     validate_file(file)
 
