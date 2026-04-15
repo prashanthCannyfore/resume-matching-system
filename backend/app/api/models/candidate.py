@@ -19,7 +19,9 @@ class Candidate(Base):
     
     # Raw resume text for embedding
     resume_text = Column(Text)
-    
+     # AI Embedding
+    # Using sentence-transformers/all-MiniLM-L6-v2 → 384 dimension vector
+    # Stored as JSON string for MVP (converted using json.dumps)
     # AI Embedding (vector)
     embedding = Column(Text)  # Will store JSON string of vector for MVP
     
