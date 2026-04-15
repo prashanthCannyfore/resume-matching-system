@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime, func
 from sqlalchemy.dialects.postgresql import ARRAY
 from app.core.database import Base
-
+from sqlalchemy.types import JSON
 class Candidate(Base):
     __tablename__ = "candidates"
 
@@ -12,10 +12,10 @@ class Candidate(Base):
     location = Column(String(100))
     
     # Structured data
-    skills = Column(ARRAY(String), default=list)
+    skills = Column(JSON, default=list)  
     experience_years = Column(Integer)
     education = Column(String(200))
-    certifications = Column(ARRAY(String), default=list)
+    certifications = Column(JSON, default=list) 
     
     # Raw resume text for embedding
     resume_text = Column(Text)

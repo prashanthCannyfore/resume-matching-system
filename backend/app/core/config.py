@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     API_TITLE: str = "Resume Matching System (RMS)"
     API_VERSION: str = "0.1.0"
     API_DESCRIPTION: str = "AI-Powered Resume & Job Matching Platform"
-
+    TESSERACT_CMD: str | None = None
     # Security & CORS
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
