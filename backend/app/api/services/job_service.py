@@ -47,11 +47,11 @@ async def create_job(data, db: AsyncSession):
 
     job = JobDescription(
         title=data.title,
-        company=data.company,
-        location=data.location,
+        company=data.company if hasattr(data, 'company') else None,
+        location=data.location if hasattr(data, 'location') else None,
         required_skills=skills,
         min_experience=experience,
-        required_education=data.required_education,
+        required_education=data.required_education if hasattr(data, 'required_education') else None,
         description_text=data.description_text
     )
 
