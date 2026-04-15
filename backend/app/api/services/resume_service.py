@@ -1,26 +1,51 @@
+from fastapi import UploadFile, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.services.file_service import validate_file, save_file, extract_text
 from app.api.services.parser import (
     extract_skills,
     extract_total_experience,
     extract_education,
-    extract_skill_experience
+    extract_skill_experience,
+    extract_email
 )
-from fastapi import UploadFile, HTTPException 
-from sqlalchemy.ext.asyncio import AsyncSession
-async def process_resume(file: UploadFile, db: AsyncSession):
-    validate_file(file)
+from app.api.models.candidate import Candidate
 
+
+async def process_resume(file: UploadFile, db: AsyncSession):
+    # -------------------------
+    # VALIDATE + SAVE FILE
+    # -------------------------
+    validate_file(file)
     file_path = await save_file(file)
+
+    # -------------------------
+    # EXTRACT TEXT
+    # -------------------------
     text = extract_text(file_path)
 
-    skills = extract_skills(text)
+    if not text:
+        raise HTTPException(status_code=400, detail="Could not extract text from file")
+
+    # -------------------------
+    # PARSING
+    # -------------------------
+    skills = await extract_skills(text, db)
     experience = extract_total_experience(text)
     education = extract_education(text)
-    skill_exp = extract_skill_experience(text)
+    skill_exp = await extract_skill_experience(text, db)
+    email = extract_email(text)
 
+    # fallback email
+    if not email:
+        email = f"{file.filename}@temp.com"
+
+    # -------------------------
+    # SAVE TO DB
+    # -------------------------
     candidate = Candidate(
-        name=file.filename,
-        email=f"{file.filename}@temp.com",
+        name=file.filename,   # later improve via NLP
+        email=email,
         skills=skills,
         experience_years=experience,
         education=education,
@@ -31,6 +56,9 @@ async def process_resume(file: UploadFile, db: AsyncSession):
     await db.commit()
     await db.refresh(candidate)
 
+    # -------------------------
+    # RESPONSE
+    # -------------------------
     return {
         "candidate": candidate,
         "skill_experience": skill_exp
