@@ -1,10 +1,10 @@
 from typing import List, Dict
 
 
+# -------------------------
+# SKILL MATCH CHECK
+# -------------------------
 def has_skill_match(candidate_skills: List[str], job_skills: List[str], threshold: float = 0.3):
-    """
-    Returns True if candidate meets minimum skill overlap
-    """
     if not job_skills:
         return True
 
@@ -12,20 +12,28 @@ def has_skill_match(candidate_skills: List[str], job_skills: List[str], threshol
     return (match_count / len(job_skills)) >= threshold
 
 
+# -------------------------
+# EXPERIENCE CHECK
+# -------------------------
 def has_experience_match(candidate_exp: int, required_exp: int):
-    """
-    Candidate must meet minimum experience requirement
-    """
     return candidate_exp >= required_exp
 
 
-def filter_candidates(candidates: List[Dict], job: Dict):
-    """
-    Rule-based filtering:
-    - Skills overlap
-    - Experience threshold
-    """
+# -------------------------
+# NEW: SCORE CALCULATION 
+# -------------------------
+def calculate_score(candidate_skills: List[str], job_skills: List[str]):
+    if not job_skills:
+        return 0
 
+    match_count = len(set(candidate_skills) & set(job_skills))
+    return round(match_count / len(job_skills), 2)
+
+
+# -------------------------
+# MAIN FILTER FUNCTION
+# -------------------------
+def filter_candidates(candidates: List[Dict], job: Dict):
     filtered = []
 
     job_skills = job.get("required_skills", [])
@@ -35,10 +43,13 @@ def filter_candidates(candidates: List[Dict], job: Dict):
         candidate_skills = candidate.get("skills", [])
         candidate_exp = candidate.get("experience_years", 0)
 
-        if (
-            has_skill_match(candidate_skills, job_skills) and
-            has_experience_match(candidate_exp, required_exp)
-        ):
+        # ✅ NEW: calculate score
+        score = calculate_score(candidate_skills, job_skills)
+
+        # ✅ UPDATED FILTER LOGIC
+        if score >= 0.3 and has_experience_match(candidate_exp, required_exp):
+            candidate["score"] = score   #  attach score
             filtered.append(candidate)
 
-    return filtered
+    # ✅ NEW: SORT BY BEST MATCH
+    return sorted(filtered, key=lambda x: x["score"], reverse=True)
