@@ -1,5 +1,6 @@
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import UploadFile
 
 from app.api.models.job import JobDescription
 from app.api.services.file_service import extract_text, save_file, validate_file
