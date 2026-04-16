@@ -97,16 +97,3 @@ async def create_job(data, db: AsyncSession):
         "education": education,
     }
 
-
-# =========================================================
-# 3. (OPTIONAL) MATCHING FUNCTION (READY FOR NEXT STEP)
-# =========================================================
-async def find_similar_candidates(job_description: str):
-    """
-    Future-ready: returns similar candidates using FAISS
-    """
-    embedding = generate_embedding(job_description)
-
-    results = search_similar(embedding, top_k=5)
-
-    return {"matches": results}
