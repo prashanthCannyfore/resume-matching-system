@@ -1,29 +1,60 @@
-@"
-# Virtual Environment
+# ========================================
+# Java / Spring Boot
+# ========================================
+target/
+*.jar
+*.war
+*.ear
+*.class
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Gradle
+.gradle/
+build/
+!gradle-wrapper.jar
+
+# Spring Boot
+application-local.properties
+application-dev.properties
+application-prod.properties
+
+# SQLite Database files 
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+rms.db
+
+# Logs
+*.log
+logs/
+log/
+
+# Environment variables
+.env
+*.env
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+*.ipr
+*.iws
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Virtual Environment 
 venv/
 .venv/
 env/
 ENV/
-
-# Python bytecode
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-
-# Database
-*.db
-*.sqlite3
-rms.db
-
-# Environment variables
-.env
-
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# Logs
-*.log
-"@ | Set-Content .gitignore -Encoding UTF8

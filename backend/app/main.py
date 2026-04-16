@@ -8,7 +8,7 @@ app = FastAPI(
     title=settings.API_TITLE,
     version=settings.API_VERSION,
     description=settings.API_DESCRIPTION,
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
 )
 
 # CORS Middleware - using settings
@@ -22,9 +22,11 @@ app.add_middleware(
 
 app.include_router(router, prefix="/api")
 
+
 @app.get("/")
 async def root():
     return {"message": "✅ Resume Matching System API is running successfully!"}
+
 
 @app.on_event("startup")
 async def startup_event():
