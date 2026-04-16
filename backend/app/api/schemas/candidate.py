@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
+
 class CandidateBase(BaseModel):
     name: str
     email: str
@@ -13,8 +14,10 @@ class CandidateBase(BaseModel):
     certifications: List[str] = []
     resume_text: Optional[str] = None
 
+
 class CandidateCreate(CandidateBase):
     pass
+
 
 class CandidateResponse(CandidateBase):
     id: int

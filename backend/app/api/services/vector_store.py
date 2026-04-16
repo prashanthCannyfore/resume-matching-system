@@ -54,9 +54,11 @@ def search_similar(embedding: list, top_k: int = 5):
         if idx in id_mapping:
             similarity = 1 / (1 + distances[0][i])
 
-            results.append({
-                "candidate_id": id_mapping[idx],
-                "similarity": round(float(similarity), 3)
-            })
+            results.append(
+                {
+                    "candidate_id": id_mapping[idx],
+                    "similarity": round(float(similarity), 3),
+                }
+            )
 
     return results

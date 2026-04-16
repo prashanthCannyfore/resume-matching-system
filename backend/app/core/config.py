@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings
 from typing import List
 import os
 
+
 class Settings(BaseSettings):
     # Application Settings
     DEBUG: bool = True
@@ -16,7 +17,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:8080",
-        "http://127.0.0.1:3000"
+        "http://127.0.0.1:3000",
     ]
 
     # Database
@@ -26,7 +27,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
-        extra = "ignore"   # Ignore extra fields in .env
+        extra = "ignore"  # Ignore extra fields in .env
 
     def get_allowed_origins(self) -> List[str]:
         """Support comma-separated string from .env"""

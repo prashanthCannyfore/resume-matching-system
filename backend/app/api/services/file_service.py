@@ -11,17 +11,20 @@ import pytesseract
 UPLOAD_DIR = "uploads"
 
 ALLOWED_EXTENSIONS = (
-    ".pdf", ".docx", ".pptx", ".xlsx",
-    ".png", ".jpg", ".jpeg", ".txt"
+    ".pdf",
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".txt",
 )
 
 
 def validate_file(file: UploadFile):
     if not file.filename.lower().endswith(ALLOWED_EXTENSIONS):
-        raise HTTPException(
-            status_code=400,
-            detail="Unsupported file type"
-        )
+        raise HTTPException(status_code=400, detail="Unsupported file type")
 
 
 async def save_file(file: UploadFile):

@@ -7,16 +7,12 @@ from app.api.schemas.job import JobCreate
 
 router = APIRouter()
 
+
 @router.post("/")
-async def create_job_api(
-    job: JobCreate,
-    db: AsyncSession = Depends(get_db)
-):
+async def create_job_api(job: JobCreate, db: AsyncSession = Depends(get_db)):
     return await create_job(job, db)
 
+
 @router.post("/upload")
-async def upload_job(
-    file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)
-):
+async def upload_job(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
     return await process_job_description(file, db)

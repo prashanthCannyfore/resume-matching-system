@@ -12,7 +12,7 @@ from app.api.services.parser import (
     extract_total_experience,
     extract_education,
     extract_skill_experience,
-    extract_email
+    extract_email,
 )
 
 # ✅ NEW (Embedding + Vector DB)
@@ -60,13 +60,13 @@ async def process_resume(file: UploadFile, db: AsyncSession):
     # SAVE TO DB
     # -------------------------
     candidate = Candidate(
-        name=file.filename,   # later improve via NLP
+        name=file.filename,  # later improve via NLP
         email=email,
         skills=skills,
         experience_years=experience,
         education=education,
         resume_text=text,
-        embedding=json.dumps(embedding)   # ✅ store vector as JSON
+        embedding=json.dumps(embedding),  # ✅ store vector as JSON
     )
 
     db.add(candidate)
@@ -82,5 +82,5 @@ async def process_resume(file: UploadFile, db: AsyncSession):
         "skills": skills,
         "experience": experience,
         "education": education,
-        "skill_experience": skill_exp
+        "skill_experience": skill_exp,
     }

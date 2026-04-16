@@ -1,7 +1,6 @@
 from typing import List, Dict
 
 
-
 def calculate_skill_score(candidate_skills: List[str], job_skills: List[str]):
     if not job_skills:
         return 0
@@ -21,16 +20,13 @@ def has_experience_match(candidate_exp: int, required_exp: int):
 # HYBRID FILTER + RANK
 # -------------------------
 def filter_and_rank_candidates(
-    candidates: List[Dict],
-    job: Dict,
-    similarity_results: List[Dict]
+    candidates: List[Dict], job: Dict, similarity_results: List[Dict]
 ):
     job_skills = job.get("required_skills", [])
     required_exp = job.get("min_experience", 0)
 
     similarity_map = {
-        item["candidate_id"]: item["similarity"]
-        for item in similarity_results
+        item["candidate_id"]: item["similarity"] for item in similarity_results
     }
 
     final_results = []
@@ -52,10 +48,7 @@ def filter_and_rank_candidates(
         similarity_score = similarity_map[cid]
 
         #  HYBRID SCORE
-        final_score = round(
-            (0.7 * similarity_score) + (0.3 * skill_score),
-            3
-        )
+        final_score = round((0.7 * similarity_score) + (0.3 * skill_score), 3)
 
         candidate["score"] = final_score
         candidate["similarity"] = similarity_score

@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
+
 class JobBase(BaseModel):
     title: str
     company: Optional[str] = None
@@ -11,8 +12,10 @@ class JobBase(BaseModel):
     required_education: Optional[str] = None
     description_text: str
 
+
 class JobCreate(JobBase):
     pass
+
 
 class JobResponse(JobBase):
     id: int

@@ -25,11 +25,7 @@ async def match_candidates(job_id: int, db: AsyncSession):
     candidates = result.scalars().all()
 
     candidate_list = [
-        {
-            "id": c.id,
-            "skills": c.skills,
-            "experience_years": c.experience_years
-        }
+        {"id": c.id, "skills": c.skills, "experience_years": c.experience_years}
         for c in candidates
     ]
 
@@ -45,14 +41,8 @@ async def match_candidates(job_id: int, db: AsyncSession):
     # -------------------------
     ranked = filter_and_rank_candidates(
         candidate_list,
-        {
-            "required_skills": job.required_skills,
-            "min_experience": job.min_experience
-        },
-        similarity_results
+        {"required_skills": job.required_skills, "min_experience": job.min_experience},
+        similarity_results,
     )
 
-    return {
-        "job_id": job_id,
-        "matches": ranked
-    }
+    return {"job_id": job_id, "matches": ranked}
