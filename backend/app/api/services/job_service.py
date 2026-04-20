@@ -30,19 +30,25 @@ async def process_job_description(file: UploadFile, db: AsyncSession):
     file_path = await save_file(file)
     text = extract_text(file_path)
 
-    # -------- NLP EXTRACTION --------
-    skills = extract_skills(text)
+    # -------------------------
+    # 1. EXTRACT FIRST
+    # -------------------------
+    skills = await extract_skills(text, db)
     experience = extract_total_experience(text)
     education = extract_education(text)
 
-    # -------- EMBEDDING --------
+    # -------------------------
+    # 2. EMBEDDING
+    # -------------------------
     embedding = generate_embedding(text)
 
-    # -------- DB OBJECT --------
+    # -------------------------
+    # 3. DB WRITE LAST
+    # -------------------------
     job = JobDescription(
         title=file.filename,
-        company="",
-        location="",
+        company=None,
+        location=None,
         required_skills=skills,
         min_experience=experience,
         required_education=education,
@@ -67,20 +73,29 @@ async def process_job_description(file: UploadFile, db: AsyncSession):
 # 2. MANUAL JOB CREATION (JSON INPUT)
 # =========================================================
 async def create_job(data, db: AsyncSession):
-    skills = extract_skills(data.description_text)
+
+    # -------------------------
+    # 1. EXTRACT FIRST (NO DB)
+    # -------------------------
+    skills = await extract_skills(data.description_text, db)
     experience = extract_total_experience(data.description_text)
     education = extract_education(data.description_text)
 
-    # -------- EMBEDDING --------
+    # -------------------------
+    # 2. GENERATE EMBEDDING
+    # -------------------------
     embedding = generate_embedding(data.description_text)
 
+    # -------------------------
+    # 3. ONLY THEN DB WRITE
+    # -------------------------
     job = JobDescription(
         title=data.title,
-        company=data.company if hasattr(data, "company") else None,
-        location=data.location if hasattr(data, "location") else None,
+        company=getattr(data, "company", None),
+        location=getattr(data, "location", None),
         required_skills=skills,
         min_experience=experience,
-        required_education=education if hasattr(data, "required_education") else None,
+        required_education=education,
         description_text=data.description_text,
         embedding=json.dumps(embedding),
     )

@@ -1,20 +1,19 @@
 import faiss
 import numpy as np
+from typing import List, Dict
 
 DIMENSION = 384
 
-# FAISS index
 index = faiss.IndexFlatL2(DIMENSION)
 
-# safer mapping
-id_mapping = {}
+id_mapping: Dict[int, int] = {}
 vector_id = 0
 
 
-# -------------------------
-# NORMALIZE VECTOR
-# -------------------------
-def normalize_vector(vec):
+def normalize_vector(vec: List[float]):
+    if not vec:
+        return np.zeros(DIMENSION, dtype="float32")
+
     vec = np.array(vec).astype("float32")
     norm = np.linalg.norm(vec)
 
@@ -24,24 +23,17 @@ def normalize_vector(vec):
     return vec / norm
 
 
-# -------------------------
-# ADD EMBEDDING
-# -------------------------
-def add_embedding(candidate_id: int, embedding: list):
+def add_embedding(candidate_id: int, embedding: List[float]):
     global vector_id
 
     vector = normalize_vector(embedding).reshape(1, -1)
 
     index.add(vector)
-
     id_mapping[vector_id] = candidate_id
     vector_id += 1
 
 
-# -------------------------
-# SEARCH SIMILAR
-# -------------------------
-def search_similar(embedding: list, top_k: int = 5):
+def search_similar(embedding: List[float], top_k: int = 5):
     if index.ntotal == 0:
         return []
 

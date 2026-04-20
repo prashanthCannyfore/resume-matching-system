@@ -25,11 +25,13 @@ app.include_router(router, prefix="/api")
 
 @app.get("/")
 async def root():
-    return {"message": "✅ Resume Matching System API is running successfully!"}
+    return {
+        "message": "✅ Resume Matching System API is running successfully with PostgreSQL!"
+    }
 
 
 @app.on_event("startup")
 async def startup_event():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("✅ Database tables created successfully")
+    print("✅ PostgreSQL tables created / migrated successfully")
