@@ -47,8 +47,8 @@ async def process_job_description(file: UploadFile, db: AsyncSession):
     # -------------------------
     job = JobDescription(
         title=file.filename,
-        company=None,
-        location=None,
+        company="N/A",
+        location="N/A",
         required_skills=skills,
         min_experience=experience,
         required_education=education,
@@ -91,8 +91,8 @@ async def create_job(data, db: AsyncSession):
     # -------------------------
     job = JobDescription(
         title=data.title,
-        company=getattr(data, "company", None),
-        location=getattr(data, "location", None),
+        company=getattr(data, "company", "N/A"),
+        location=getattr(data, "location", "N/A"),
         required_skills=skills,
         min_experience=experience,
         required_education=education,

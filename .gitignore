@@ -61,3 +61,7 @@ __pycache__/
 
 # Uploaded files (resumes, JD docs, etc.)
 backend/uploads/
+
+# FAISS index files (vector store)
+backend/faiss_index.bin
+backend/faiss_mapping.pkl

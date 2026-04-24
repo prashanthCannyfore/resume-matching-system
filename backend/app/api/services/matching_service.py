@@ -46,7 +46,7 @@ async def match_candidates(job_id: int, db: AsyncSession):
     # -------------------------
     # VECTOR SEARCH
     # -------------------------
-    similarity_results = search_similar(job_embedding, top_k=10)
+    similarity_results = search_similar(job_embedding, top_k=5)
 
     if not similarity_results:
         return {"job_id": job_id, "matches": []}

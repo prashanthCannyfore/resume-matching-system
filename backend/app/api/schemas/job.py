@@ -4,13 +4,13 @@ from datetime import datetime
 
 
 class JobBase(BaseModel):
-    title: Optional[str] = None
+    title: str  # REQUIRED
+    description_text: str  # REQUIRED
     company: Optional[str] = None
     location: Optional[str] = None
     required_skills: Optional[List[str]] = []
     min_experience: Optional[int] = None
     required_education: Optional[str] = None
-    description_text: Optional[str] = None
 
 
 class JobCreate(JobBase):
