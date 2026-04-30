@@ -9,17 +9,13 @@ class Candidate(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    email = Column(String(100), unique=True, nullable=False)
-    phone = Column(String(20))
-    location = Column(String(100))
-
-    # Structured data
+    email = Column(String(150), unique=True, nullable=True)  # Allow NULL emails
+    phone = Column(String(20), nullable=True)
+    location = Column(String(100), nullable=True)
     skills = Column(JSON, default=list)
-    experience_years = Column(Integer)
-    education = Column(String(200))
+    experience_years = Column(Integer, default=0)
+    education = Column(String(200), nullable=True)
     certifications = Column(JSON, default=list)
-
-    # Raw resume text for embedding
     resume_text = Column(Text)
     # AI Embedding
     # Using sentence-transformers/all-MiniLM-L6-v2 → 384 dimension vector
