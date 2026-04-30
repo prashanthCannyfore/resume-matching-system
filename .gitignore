@@ -58,3 +58,15 @@ env/
 ENV/
 __pycache__/
 *.pyc
+
+# Uploaded files (resumes, JD docs, etc.)
+backend/uploads/
+# ========================================
+# FAISS / Vector DB files
+# ========================================
+backend/faiss_index.bin
+backend/faiss_mapping.pkl
+
+# Optional (future-proof)
+*.bin
+*.pkl

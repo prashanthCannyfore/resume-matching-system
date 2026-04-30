@@ -1,6 +1,16 @@
 from typing import List, Dict
 
+# -------------------------
+# CONFIG
+# -------------------------
+SIMILARITY_WEIGHT = 0.7
+SKILL_WEIGHT = 0.3
+MIN_SCORE_THRESHOLD = 0.1
 
+
+# -------------------------
+# SKILL MATCH SCORE
+# -------------------------
 def calculate_skill_score(candidate_skills: List[str], job_skills: List[str]):
     if not job_skills:
         return 0
@@ -34,21 +44,30 @@ def filter_and_rank_candidates(
     for candidate in candidates:
         cid = candidate.get("id")
 
+        # Skip if not in similarity results
         if cid not in similarity_map:
             continue
 
         candidate_skills = candidate.get("skills", [])
         candidate_exp = candidate.get("experience_years", 0)
 
+        # Skill score
         skill_score = calculate_skill_score(candidate_skills, job_skills)
 
+        # Experience filter
         if not has_experience_match(candidate_exp, required_exp):
             continue
 
         similarity_score = similarity_map[cid]
 
-        #  HYBRID SCORE
-        final_score = round((0.7 * similarity_score) + (0.3 * skill_score), 3)
+        # Final hybrid score
+        final_score = round(
+            (SIMILARITY_WEIGHT * similarity_score) + (SKILL_WEIGHT * skill_score), 3
+        )
+
+        # Apply threshold filter
+        if final_score < MIN_SCORE_THRESHOLD:
+            continue
 
         candidate["score"] = final_score
         candidate["similarity"] = similarity_score
@@ -56,4 +75,5 @@ def filter_and_rank_candidates(
 
         final_results.append(candidate)
 
+    # Sort descending
     return sorted(final_results, key=lambda x: x["score"], reverse=True)

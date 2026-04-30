@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api.routers import router
+
+# Import routers
+from app.api.routers import router as main_router  # ← your original combined router
+from app.api.routers.vector_router import router as vector_router  # ← new vector router
 
 app = FastAPI(
     title=settings.API_TITLE,
@@ -20,16 +24,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router, prefix="/api")
+app.include_router(main_router, prefix="/api")
+app.include_router(vector_router, prefix="/api")  # ← adds /api/vector/rebuild
 
 
 @app.get("/")
 async def root():
-    return {"message": "✅ Resume Matching System API is running successfully!"}
+    return {
+        "message": "✅ Resume Matching System API is running successfully with PostgreSQL + Persistent FAISS!"
+    }
 
 
 @app.on_event("startup")
 async def startup_event():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("✅ Database tables created successfully")
+    print("✅ PostgreSQL tables created / migrated successfully")

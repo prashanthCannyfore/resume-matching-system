@@ -5,18 +5,43 @@ from app.api.models.skill import Skill
 
 
 def normalize_text(text: str) -> str:
-    return text.lower().strip()
+    text = text.lower()
+
+    # remove special characters (commas, dots, etc.)
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
+
+    # remove extra spaces
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
 
 
-async def extract_skills(text: str, db: AsyncSession):
+async def extract_skills(text: str, db: AsyncSession = None):
     text = normalize_text(text)
 
-    result = await db.execute(select(Skill.name))
-    common_skills = result.scalars().all()
-
     found_skills = []
-    for skill in common_skills:
-        if re.search(rf"\b{skill}\b", text):
+
+    if db:
+        try:
+            result = await db.execute(select(Skill.name))
+            common_skills = result.scalars().all()
+
+            for skill in common_skills:
+                skill_clean = normalize_text(skill)
+
+                if f" {skill_clean} " in f" {text} ":
+                    found_skills.append(skill_clean)
+
+            return list(set(found_skills))
+
+        except Exception:
+            pass  # fallback if DB fails
+
+    # fallback skills
+    fallback_skills = ["python", "java", "sql", "fastapi", "django"]
+
+    for skill in fallback_skills:
+        if f" {skill} " in f" {text} ":
             found_skills.append(skill)
 
     return list(set(found_skills))
