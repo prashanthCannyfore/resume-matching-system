@@ -18,9 +18,11 @@ class Settings(BaseSettings):
 
     # CORS
     ALLOWED_ORIGINS: List[str] = [
+        "http://localhost:5173",  # Vue default port (Vite)
+        "http://127.0.0.1:5173",
         "http://localhost:3000",
-        "http://localhost:8080",
         "http://127.0.0.1:3000",
+        "*",
     ]
 
     # ================== DATABASE ==================
@@ -35,7 +37,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
-        extra = "ignore"          # Ignore any extra variables in .env
+        extra = "ignore"  # Ignore any extra variables in .env
 
     def get_allowed_origins(self) -> List[str]:
         if isinstance(self.ALLOWED_ORIGINS, str):
