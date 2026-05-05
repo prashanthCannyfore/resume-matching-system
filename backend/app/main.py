@@ -5,8 +5,8 @@ from app.core.config import settings
 from app.core.database import engine, Base
 
 # Import routers
-from app.api.routers import router as main_router  # ← your original combined router
-from app.api.routers.vector_router import router as vector_router  # ← new vector router
+from app.api.routers import router as main_router
+from app.api.routers.vector_router import router as vector_router
 
 app = FastAPI(
     title=settings.API_TITLE,
@@ -15,19 +15,18 @@ app = FastAPI(
     debug=settings.DEBUG,
 )
 
-# CORS Middleware - using settings
+# ====================== CORS (Secure Configuration) ======================
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=settings.get_allowed_origins(),
-    allow_origins=["*"],
+    allow_origins=settings.get_allowed_origins(),   # Uses config.py properly
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# ========================================================================
 
 app.include_router(main_router, prefix="/api")
-app.include_router(vector_router, prefix="/api")  # ← adds /api/vector/rebuild
-
+app.include_router(vector_router, prefix="/api")
 
 @app.get("/")
 async def root():
