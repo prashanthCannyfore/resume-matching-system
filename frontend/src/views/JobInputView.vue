@@ -4,7 +4,7 @@
 
     <div class="job-form-card">
       <div class="form-group">
-        <label>Job Title</label>
+        <label>Job Title <span class="required">*</span></label>
         <input
           v-model="jobData.title"
           type="text"
@@ -14,10 +14,10 @@
       </div>
 
       <div class="form-group">
-        <label>Job Description</label>
+        <label>Job Description <span class="required">*</span></label>
         <textarea
           v-model="jobData.description_text"
-          rows="14"
+          rows="15"
           placeholder="Paste the full job description here..."
           class="textarea-field"
         ></textarea>
@@ -25,10 +25,10 @@
 
       <button 
         @click="submitJob" 
-        :disabled="loading || !jobData.title || !jobData.description_text"
+        :disabled="loading || !jobData.title.trim() || !jobData.description_text.trim()"
         class="submit-btn"
       >
-        {{ loading ? 'Saving Job...' : 'Save Job Description' }}
+        {{ loading ? 'Saving Job & Finding Best Candidates...' : 'Save Job & Find Matching Candidates' }}
       </button>
     </div>
   </div>
@@ -37,6 +37,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const jobData = ref({
   title: '',
@@ -55,14 +58,22 @@ const submitJob = async () => {
   loading.value = true
 
   try {
-    const response = await axios.post(`${API_BASE}/jobs/`, jobData.value)
-    alert(`✅ Job created successfully! ID: ${response.data.id}`)
-    // Clear form after success
+    // Step 1: Create Job
+    const jobRes = await axios.post(`${API_BASE}/jobs/`, jobData.value)
+    const jobId = jobRes.data.id
+
+    alert(`✅ Job created successfully! ID: ${jobId}\n\nFinding best matching candidates...`)
+
+    // Step 2: Redirect to Matching Page with Job ID
+    router.push(`/matching/${jobId}`)
+
+    // Optional: Clear form
     jobData.value.title = ''
     jobData.value.description_text = ''
+
   } catch (error: any) {
     console.error(error)
-    alert("❌ Failed to create job. Check console for details.")
+    alert("❌ Failed to create job. Please check console for details.")
   } finally {
     loading.value = false
   }
@@ -94,6 +105,10 @@ const submitJob = async () => {
   color: #374151;
 }
 
+.required {
+  color: #ef4444;
+}
+
 .input-field, .textarea-field {
   width: 100%;
   padding: 12px 16px;
@@ -117,6 +132,7 @@ const submitJob = async () => {
   font-weight: 600;
   cursor: pointer;
   margin-top: 10px;
+  width: 100%;
 }
 
 .submit-btn:disabled {

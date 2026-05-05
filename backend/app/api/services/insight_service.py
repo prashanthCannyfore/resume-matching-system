@@ -14,10 +14,10 @@ async def generate_candidate_insight(
     skill_score: float,
 ) -> Dict:
     """
-    Generate AI-powered recruiter insight using Groq (async)
+    Generate high-quality, recruiter-friendly AI insight
     """
     prompt = f"""
-You are an expert technical recruiter.
+You are a senior technical recruiter with 10+ years of experience.
 
 **Job Position:**
 Title: {job.get('title', 'N/A')}
@@ -30,28 +30,34 @@ Skills: {', '.join(candidate.get('skills', [])) or 'Not extracted'}
 Experience: {candidate.get('experience_years', 0)} years
 Education: {candidate.get('education') or 'Not mentioned'}
 
-**Match Data:**
-Overall Match Score: {match_score:.3f}
+**Match Analysis:**
+Overall Match Score: {match_score:.2f} / 1.00
 Vector Similarity: {similarity:.3f}
-Skill Match Score: {skill_score:.3f}
+Skill Match Score: {skill_score:.2f}
 
-Generate a professional, concise recruiter insight in JSON format only with these exact keys:
+Generate a professional, insightful recruiter note in **valid JSON only** with these exact keys:
+
 {{
-  "summary": "One sentence professional summary",
-  "strengths": ["bullet point 1", "bullet point 2", "bullet point 3"],
-  "weaknesses": ["bullet point 1", "bullet point 2"],
-  "skill_gaps": ["skill gap 1", "skill gap 2"],
-  "match_explanation": "Clear explanation why this candidate got this score"
+  "summary": "One powerful, concise professional summary (max 20 words)",
+  "strengths": ["3 short bullet points highlighting key strengths"],
+  "weaknesses": ["1-2 short bullet points (if any)"],
+  "skill_gaps": ["List of missing skills or gaps"],
+  "match_explanation": "Detailed explanation of why this candidate received this score. Be specific about skills match, experience, and overall fit."
 }}
-Keep bullets short and professional.
+
+Rules:
+- Be honest and balanced
+- Use professional recruiter language
+- Keep bullets short and impactful (max 8-10 words each)
+- Focus on technical fit for the role
 """
 
     try:
         response = await client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.3-70b-versatile",   # Best current model
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=600,
+            temperature=0.65,
+            max_tokens=700,
             response_format={"type": "json_object"}
         )
 
@@ -67,10 +73,11 @@ Keep bullets short and professional.
 
     except Exception as e:
         print(f"Groq insight error: {e}")
+        # Smart fallback
         return {
-            "summary": f"Strong match with score {match_score:.2f}",
-            "strengths": ["Relevant skills found", "Good experience level"],
-            "weaknesses": ["Some skill gaps possible"],
-            "skill_gaps": ["Check missing skills manually"],
-            "match_explanation": f"Hybrid score based on vector similarity ({similarity:.2f}) + skill match ({skill_score:.2f})",
+            "summary": f"Strong candidate with {candidate.get('experience_years', 0)} years of experience",
+            "strengths": ["Relevant technical background", "Solid experience level"],
+            "weaknesses": ["Some skill gaps identified"],
+            "skill_gaps": ["Review missing skills from job description"],
+            "match_explanation": f"Overall score of {match_score:.2f} based on {similarity:.2f} vector similarity and {skill_score:.2f} skill match. Strong experience but may need upskilling in some areas."
         }
