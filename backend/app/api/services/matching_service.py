@@ -71,11 +71,21 @@ async def match_candidates(job_id: int, db: AsyncSession, sort_by: str = "score"
     for cand in ranked_candidates:
         similarity = cand.get("similarity", 0)
         skill_score = cand.get("skill_score", 0)
+        candidate_exp = cand.get("experience_years", 0)
+        required_exp = job.min_experience or 0
 
-        cand["final_score"] = (
-            0.6 * similarity +
-            0.4 * skill_score
+        experience_match = (
+            1.0 if required_exp == 0
+            else (1.0 if candidate_exp >= required_exp else candidate_exp / required_exp)
         )
+
+        # Perfect match: all skills present + experience met → 100%
+        if skill_score >= 1.0 and experience_match >= 1.0:
+            cand["final_score"] = 1.0
+        else:
+            cand["final_score"] = round(
+                0.5 * similarity + 0.3 * skill_score + 0.2 * experience_match, 3
+            )
 
     # ------------------------- SORTING -------------------------
     if sort_by == "experience":

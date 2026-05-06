@@ -9,7 +9,7 @@ class CandidateBase(BaseModel):
     phone: Optional[str] = None
     location: Optional[str] = None
     skills: List[str] = []
-    experience_years: Optional[int] = None
+    experience_years: Optional[float] = None
     education: Optional[str] = None
     certifications: List[str] = []
     resume_text: Optional[str] = None

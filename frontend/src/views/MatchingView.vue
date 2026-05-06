@@ -72,7 +72,7 @@
 
         <p>
           <strong>Experience:</strong>
-          {{ candidate.experience_years || 0 }} years
+          {{ (candidate.experience_years || 0).toFixed(1) }} years
         </p>
 
         <div class="download-section">
@@ -86,11 +86,7 @@
 
         <div class="insights">
           <h4>🤖 AI Recruiter Insight</h4>
-          <p class="summary">{{ candidate.insight?.summary }}</p>
-          <p class="explanation">
-            <strong>Why this score?</strong>
-            {{ candidate.insight?.match_explanation }}
-          </p>
+          <pre class="insight-text">{{ candidate.insight }}</pre>
         </div>
       </div>
     </div>
@@ -298,5 +294,11 @@ h1 {
   padding: 12px;
   background: #f1f5f9;
   border-radius: 10px;
+}
+
+.insight-text {
+  white-space: pre-wrap;
+  font-family: inherit;
+  margin: 0;
 }
 </style>
