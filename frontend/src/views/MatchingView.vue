@@ -75,6 +75,15 @@
           {{ candidate.experience_years || 0 }} years
         </p>
 
+        <div class="download-section">
+          <button
+            @click="downloadResume(candidate.id)"
+            class="download-btn"
+          >
+            📄 Download Resume
+          </button>
+        </div>
+
         <div class="insights">
           <h4>🤖 AI Recruiter Insight</h4>
           <p class="summary">{{ candidate.insight?.summary }}</p>
@@ -103,6 +112,28 @@ onMounted(() => {
 
 const setSort = (type: "score" | "experience") => {
   matchStore.setSortBy(type);
+};
+
+const downloadResume = async (candidateId: number) => {
+  try {
+    const response = await fetch(`http://localhost:8000/api/candidates/${candidateId}/download`);
+    if (!response.ok) {
+      throw new Error('Failed to download resume');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `resume_${candidateId}.pdf`; // Default filename
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('Download failed:', error);
+    alert('Failed to download resume. Please try again.');
+  }
 };
 
 const displayedCandidates = computed(() => {
@@ -218,6 +249,25 @@ h1 {
 .score-value {
   font-weight: 700;
   color: #16a34a;
+}
+
+.download-section {
+  margin: 12px 0;
+}
+
+.download-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.download-btn:hover {
+  background: #2563eb;
 }
 
 .tags {
