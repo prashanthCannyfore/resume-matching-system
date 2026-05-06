@@ -13,36 +13,59 @@ export const useMatchStore = defineStore('match', {
     filterMinScore: 0.4   // Default 40%
   }),
 
-  getters: {
-    filteredAndSortedMatches(state) {
-      let list = state.matches.filter((m: any) => m.score >= state.filterMinScore)
+ getters: {
+  filteredAndSortedMatches(state) {
+    console.log("👉 Getter triggered")
 
-      if (state.sortBy === 'score') {
-        return [...list].sort((a: any, b: any) => b.score - a.score)
-      } else {
-        return [...list].sort((a: any, b: any) => 
-          (b.experience_years || 0) - (a.experience_years || 0)
-        )
-      }
+    // ✅ Always clone first
+    let list = [...state.matches]
+
+    // ✅ filter
+    list = list.filter((m: any) => {
+      const score = Number(m.final_score ?? 0)
+      return score >= state.filterMinScore
+    })
+
+    console.log("After filter:", list.map(x => x.name))
+
+    // ✅ sort
+    if (state.sortBy === 'score') {
+      list.sort((a: any, b: any) => {
+        return (b.final_score ?? 0) - (a.final_score ?? 0)
+      })
+    } else {
+      list.sort((a: any, b: any) => {
+        return (b.experience_years ?? 0) - (a.experience_years ?? 0)
+      })
     }
-  },
+
+    // ✅ return new reference
+    return [...list]
+  }
+},
 
   actions: {
-    async fetchMatches(jobId: number) {
-      this.loading = true
-      this.error = null
+   async fetchMatches(jobId: number) {
+  this.loading = true
+  this.error = null
 
-      try {
-        const res = await axios.post(`${API_BASE}/jobs/${jobId}/match`)
-        this.currentJob = res.data
-        this.matches = res.data.matches || []
-      } catch (err: any) {
-        this.error = err.response?.data?.detail || 'Failed to load matching candidates'
-        console.error('Match API Error:', err)
-      } finally {
-        this.loading = false
-      }
-    },
+  try {
+    const res = await axios.post(`${API_BASE}/jobs/${jobId}/match`)
+
+    this.currentJob = res.data
+
+    // ✅ IMPORTANT FIX (force reactivity)
+    this.matches = [...(res.data.matches || [])]
+
+    console.log("✅ Matches set:", this.matches)
+
+  } catch (err: any) {
+    this.error = err.response?.data?.detail || 'Failed to load matching candidates'
+    console.error('Match API Error:', err)
+  } finally {
+    this.loading = false
+  }
+},
 
     setSortBy(sort: 'score' | 'experience') {
       this.sortBy = sort
