@@ -27,11 +27,12 @@ class Settings(BaseSettings):
     # ================== DATABASE ==================
     # Now properly loaded from .env (no hard-coded fallback)
     DATABASE_URL: str
-
+    # Add this line for SSL
+    DATABASE_SSL_MODE: str = "disable"   # or "require" if you have proper cert
     # Optional API Keys
     GROQ_API_KEY: str | None = None
     OPENAI_API_KEY: str | None = None
-
+    GEMINI_API_KEY: str | None = None
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

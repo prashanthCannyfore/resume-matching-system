@@ -39,17 +39,22 @@
       <div class="result-grid">
         <div v-for="(result, i) in uploadResults" :key="i" class="result-card">
           <h4>✅ {{ result.name }}</h4>
-          <p><strong>Total Experience:</strong> {{ result.experience || 0 }} years</p>
+          <p><strong>Total Experience:</strong> {{ (result.experience || 0).toFixed(1) }} years</p>
           <p><strong>Education:</strong> {{ result.education || 'Not mentioned' }}</p>
           
           <div class="skills-box">
             <strong>Skills with Experience:</strong>
             <ul v-if="result.skill_experience && result.skill_experience.length">
               <li v-for="(item, idx) in result.skill_experience" :key="idx">
-                <strong>{{ item.skill }}</strong> — {{ item.experience }} years
+                <strong>{{ item.skill }}</strong>
+                <span v-if="item.experience"> — {{ item.experience }} years</span>
               </li>
             </ul>
             <p v-else>Skills: {{ result.skills?.join(', ') || 'No skills extracted' }}</p>
+          </div>
+
+          <div class="parsed-insight" v-if="result.parsed_insight">
+            <pre>{{ result.parsed_insight }}</pre>
           </div>
         </div>
       </div>
@@ -128,5 +133,17 @@ const uploadResumes = async () => {
 .skills-box ul {
   margin-top: 8px;
   padding-left: 20px;
+}
+
+.parsed-insight {
+  margin-top: 16px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  padding: 16px;
+  border-radius: 10px;
+  white-space: pre-wrap;
+  font-family: Inter, system-ui, monospace;
+  font-size: 14px;
+  color: #111827;
 }
 </style>

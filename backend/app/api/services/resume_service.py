@@ -11,6 +11,7 @@ from app.api.services.parser import (
     extract_education,
     extract_skill_experience,
     extract_email,
+    generate_resume_insight,
 )
 from app.api.services.embedding_service import generate_embedding
 from app.api.services.vector_store import add_embedding
@@ -30,6 +31,7 @@ async def process_resume(file: UploadFile, db: AsyncSession):
     experience = extract_total_experience(text)
     education = extract_education(text)
     skill_exp = await extract_skill_experience(text, db)
+    parsed_insight = await generate_resume_insight(text, db)
     email = extract_email(text)
 
     # ------------------------- EMBEDDING -------------------------
@@ -68,6 +70,8 @@ async def process_resume(file: UploadFile, db: AsyncSession):
                 "skills": skills,
                 "experience": experience,
                 "education": education,
+                "skill_experience": skill_exp,
+                "parsed_insight": parsed_insight,
             }
 
     # ------------------------- CREATE NEW CANDIDATE -------------------------
@@ -95,4 +99,6 @@ async def process_resume(file: UploadFile, db: AsyncSession):
         "skills": skills,
         "experience": experience,
         "education": education,
+        "skill_experience": skill_exp,
+        "parsed_insight": parsed_insight,
     }

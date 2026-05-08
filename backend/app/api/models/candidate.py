@@ -13,7 +13,7 @@ class Candidate(Base):
     phone = Column(String(20), nullable=True)
     location = Column(String(100), nullable=True)
     skills = Column(JSON, default=list)
-    experience_years = Column(Integer, default=0)
+    experience_years = Column(Float, default=0.0)
     education = Column(String(200), nullable=True)
     certifications = Column(JSON, default=list)
     resume_text = Column(Text)

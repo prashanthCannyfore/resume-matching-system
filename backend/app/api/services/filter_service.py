@@ -1,10 +1,12 @@
 from typing import List, Dict
 
+from app.api.services.parser import normalize_skill_list
+
 # -------------------------
 # CONFIG
 # -------------------------
-SIMILARITY_WEIGHT = 0.7
-SKILL_WEIGHT = 0.3
+SIMILARITY_WEIGHT = 0.5
+SKILL_WEIGHT = 0.5
 MIN_SCORE_THRESHOLD = 0.1
 
 
@@ -15,8 +17,10 @@ def calculate_skill_score(candidate_skills: List[str], job_skills: List[str]):
     if not job_skills:
         return 0
 
-    match_count = len(set(candidate_skills) & set(job_skills))
-    return round(match_count / len(job_skills), 2)
+    normalized_candidate = set(normalize_skill_list(candidate_skills))
+    normalized_job = set(normalize_skill_list(job_skills))
+    match_count = len(normalized_candidate & normalized_job)
+    return round(match_count / len(normalized_job), 2)
 
 
 # -------------------------
