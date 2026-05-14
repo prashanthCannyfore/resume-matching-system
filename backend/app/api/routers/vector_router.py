@@ -9,5 +9,5 @@ router = APIRouter(prefix="/vector", tags=["Vector Store"])
 @router.post("/rebuild")
 async def rebuild_vector_store(db: AsyncSession = Depends(get_db)):
     """Rebuild FAISS index from all candidates in database"""
-    result = await rebuild_faiss_from_db(db)
-    return result
+    rebuilt = await rebuild_faiss_from_db(db)
+    return {"rebuilt": rebuilt, "message": f"FAISS index rebuilt with {rebuilt} candidates"}
