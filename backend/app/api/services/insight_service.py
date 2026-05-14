@@ -1,37 +1,17 @@
 """
-Candidate insight generation.
-
-CPU performance reality (llama3.2:3b, no GPU):
-  ~0.3 tokens/sec → 150 output tokens ≈ 60-90s per call
-
-Design decisions:
-1. Prompt is kept under 400 tokens total (resume capped at 300 chars).
-2. Output capped at 150 tokens — enough for a useful summary.
-3. Each insight call has a hard 90s asyncio timeout.
-4. On ANY failure (timeout, error, empty) → instant Python fallback.
-5. All 5 insight calls run CONCURRENTLY (asyncio.gather) with a semaphore=1
-   because Ollama on CPU can only handle one generate at a time anyway —
-   but the gather structure means we don't block the event loop between calls.
-6. Matching result is NEVER held back waiting for insights.
-   Insights are generated after ranking is complete; if they all fail,
-   fallback strings are used and the response still goes out.
+Candidate insight generation — backed by local Ollama LLM.
+Forces exact structured format.
 """
 import asyncio
 import logging
 import time
-
-import httpx
 
 from app.api.services.ollama_client import generate
 from app.api.services.parser import normalize_skill_list
 
 logger = logging.getLogger(__name__)
 
-# One Ollama generate at a time on CPU — parallel calls just queue up and
-# each waits longer, making timeouts worse. Serialise them.
 _INSIGHT_SEM = asyncio.Semaphore(1)
-
-# Hard wall-clock timeout per insight call (asyncio level, not httpx level)
 _INSIGHT_TIMEOUT_S = 90.0
 
 
@@ -42,148 +22,108 @@ async def generate_candidate_insight(
     similarity: float,
     skill_score: float,
 ) -> str:
-    """
-    Generate an AI insight for one candidate.
-    ALWAYS returns a string — never raises, never blocks the caller.
-    """
     name = candidate.get("name", "Candidate")
-    t0   = time.monotonic()
+    t0 = time.monotonic()
 
     try:
         async with _INSIGHT_SEM:
-            logger.info(f"[insight] Generating for {name!r} (timeout={_INSIGHT_TIMEOUT_S}s)")
             result = await asyncio.wait_for(
-                _call_ollama(candidate, job, match_score),
+                _call_ollama(candidate, job, match_score, similarity, skill_score),
                 timeout=_INSIGHT_TIMEOUT_S,
             )
             elapsed = time.monotonic() - t0
             logger.info(f"[insight] Done for {name!r} in {elapsed:.1f}s")
             return result
 
-    except asyncio.TimeoutError:
-        elapsed = time.monotonic() - t0
-        logger.warning(
-            f"[insight] Timeout for {name!r} after {elapsed:.1f}s — using fallback"
-        )
-    except httpx.TimeoutException as e:
-        logger.warning(f"[insight] HTTP timeout for {name!r}: {e} — using fallback")
     except Exception as e:
-        logger.error(f"[insight] Error for {name!r}: {type(e).__name__}: {e} — using fallback")
+        logger.error(f"[insight] Failed for {name!r}: {e}")
+        return _fallback_insight(candidate, job, match_score, similarity, skill_score)
 
-    return _fallback_insight(candidate, job, match_score, similarity, skill_score)
 
-
-async def _call_ollama(candidate: dict, job: dict, match_score: float) -> str:
-    """Build a minimal prompt and call Ollama generate."""
-    prompt = _build_compact_prompt(candidate, job, match_score)
+async def _call_ollama(candidate: dict, job: dict, match_score: float, similarity: float, skill_score: float) -> str:
+    prompt = _build_structured_prompt(candidate, job, match_score, similarity, skill_score)
+    
     response = await generate(
         prompt=prompt,
         temperature=0.1,
-        max_tokens=150,     # ~45s on CPU at 0.3 tok/s
+        max_tokens=800,
     )
-    if response and response.strip():
+    
+    if response and any(marker in response for marker in ["📊 Match Summary", "✅ Matched Skills"]):
         return response.strip()
-    # Empty response → use fallback
-    raise ValueError("Empty response from Ollama")
+    
+    logger.warning("Ollama did not return structured format, using fallback")
+    return _fallback_insight(candidate, job, match_score, similarity, skill_score)
 
 
-def _build_compact_prompt(candidate: dict, job: dict, match_score: float) -> str:
-    """
-    Compact prompt — total ~300-400 tokens.
-    Previous prompt was ~2000 tokens which caused timeouts.
-    """
-    candidate_exp   = candidate.get("experience_years", 0)
-    matched_skills  = candidate.get("matched_skills", [])
-    missing_skills  = candidate.get("missing_skills", [])
-    min_exp         = job.get("min_experience", 0)
-    job_skills      = job.get("required_skills", [])
+def _build_structured_prompt(candidate: dict, job: dict, match_score: float, similarity: float, skill_score: float) -> str:
+    required_skills = ", ".join(job.get("required_skills", []))
+    min_exp = job.get("min_experience", 0)
+    resume_snippet = (candidate.get("resume_text") or "")[:1400]
 
-    # Cap resume to 300 chars — enough context, avoids token explosion
-    resume_ctx = (candidate.get("resume_text") or "")[:300].replace("\n", " ")
+    matched_skills = candidate.get("matched_skills", [])
+    missing_skills = candidate.get("missing_skills", [])
 
-    verdict = (
-        "Strong Fit" if candidate_exp >= min_exp
-        else "Good Fit" if min_exp == 0 or candidate_exp >= min_exp * 0.8
-        else "Underqualified"
-    )
+    return f"""You are a senior AI recruiter. Analyse the candidate strictly using the given data.
 
-    matched_str = ", ".join(matched_skills) if matched_skills else "None"
-    missing_str = ", ".join(missing_skills) if missing_skills else "None"
+**STRICT OUTPUT RULES**:
+- Use EXACTLY the format below.
+- Do NOT add any extra text before or after.
+- Do NOT change section titles or emojis.
 
-    return (
-        f"Recruiter insight for candidate applying to role requiring: {', '.join(job_skills)}.\n"
-        f"Experience: {candidate_exp} yrs (required: {min_exp} yrs). "
-        f"Match score: {match_score:.0%}. "
-        f"Matched skills: {matched_str}. "
-        f"Missing skills: {missing_str}. "
-        f"Verdict: {verdict}.\n"
-        f"Resume context: {resume_ctx}\n\n"
-        f"Write a 3-sentence professional recruiter summary covering fit, strengths, and recommendation."
-    )
-
-
-# ── Pure-Python fallback — instant, no LLM needed ────────────────────────────
-def _fallback_insight(
-    candidate: dict,
-    job: dict,
-    match_score: float,
-    similarity: float,
-    skill_score: float,
-) -> str:
-    job_skills     = set(normalize_skill_list(job.get("required_skills", [])))
-    experience     = candidate.get("experience_years", 0)
-    min_experience = job.get("min_experience", 0)
-
-    matched = candidate.get("matched_skills") or sorted(
-        set(normalize_skill_list(candidate.get("skills", []))) & job_skills
-    )
-    missing = candidate.get("missing_skills") or sorted(
-        job_skills - set(normalize_skill_list(candidate.get("skills", [])))
-    )
-    total_required = len(job_skills)
-
-    verdict = (
-        "Strong Fit"    if experience >= min_experience
-        else "Good Fit" if min_experience == 0 or experience >= min_experience * 0.8
-        else "Underqualified"
-    )
-
-    recommendation = (
-        "Hire"      if len(matched) == total_required and experience >= min_experience
-        else "Consider" if matched and experience >= min_experience * 0.75
-        else "Reject"
-    )
-
-    matched_list = "\n- ".join(matched) if matched else "None"
-    missing_list = "\n- ".join(missing) if missing else "None"
-
-    return f"""📊 Match Summary
+📊 Match Summary
 - Match Score: {match_score:.1%}
-- Skill Match: {len(matched)}/{total_required}
-- Experience: {experience} years
+- Skill Match: {len(matched_skills)}/{len(job.get("required_skills", []))}
+- Experience: {candidate.get("experience_years", 0)} years
 
 ---
 
 ✅ Matched Skills:
-- {matched_list}
+- {", ".join(matched_skills) if matched_skills else "None"}
 
 ❌ Missing Skills:
-- {missing_list}
+- {", ".join(missing_skills) if missing_skills else "None"}
 
 ---
 
 📈 Experience Analysis:
-- Candidate Experience: {experience} years
-- Required Experience: {min_experience} years
-- Verdict: {verdict}
+- Candidate Experience: {candidate.get("experience_years", 0)} years
+- Required Experience: {min_exp} years
+- Verdict: {"Strong Fit" if candidate.get("experience_years", 0) >= min_exp else "Good Fit" if min_exp == 0 or candidate.get("experience_years", 0) >= min_exp * 0.8 else "Underqualified"}
 
 ---
 
-🤖 AI Recruiter Insight:
-Candidate has {experience} years of experience with {len(matched)}/{total_required} required skills matched ({matched_list}). {"Experience requirement met." if experience >= min_experience else f"Experience gap of {min_experience - experience:.1f} years."} {"All required skills present — strong technical fit." if not missing else f"Missing: {missing_list}."}
+🎯 Role Fit Analysis:
+- Relevant Experience: <based on resume>
+- Transferable Skills: <list key skills>
+- Domain Fit: <tech / design / etc>
+
+---
+
+🧠 Strengths:
+- <3-5 bullet points>
+
+---
+
+⚠️ Gaps / Risks:
+- <list gaps or "No major gaps">
+
+---
+
+🤖 AI Recruiter Insight (DETAILED):
+<4-6 lines professional evaluation>
 
 ---
 
 💬 Final Recommendation:
-- {recommendation}
-- Reason: Skill match {len(matched)}/{total_required}, experience {experience} yrs (required {min_experience} yrs)."""
+- <Hire / Consider / Reject>
+- Reason: <short justification>
+
+---
+
+JOB: {job.get("title", "React Developer")} requiring {required_skills}
+EXPERIENCE REQUIRED: {min_exp} years
+
+RESUME:
+{resume_snippet}
+"""
