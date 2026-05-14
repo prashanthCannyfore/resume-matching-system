@@ -10,7 +10,7 @@ export const useMatchStore = defineStore('match', {
     loading: false,
     error: null as string | null,
     sortBy: 'score' as 'score' | 'experience',
-    filterMinScore: 0.4   // Default 40%
+    filterMinScore: 0.0   // Show all candidates by default; user can raise via slider
   }),
 
  getters: {

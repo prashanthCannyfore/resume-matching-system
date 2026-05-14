@@ -49,10 +49,17 @@ def extract_text(file_path: str):
         reader = PdfReader(file_path)
         return " ".join(page.extract_text() or "" for page in reader.pages)
 
-    # DOCX
+    # DOCX — extract paragraphs AND table cells (dates/experience often live in tables)
     elif ext.endswith(".docx"):
         doc = docx.Document(file_path)
-        return " ".join(p.text for p in doc.paragraphs)
+        parts = [p.text for p in doc.paragraphs]
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for p in cell.paragraphs:
+                        if p.text.strip():
+                            parts.append(p.text)
+        return "\n".join(parts)
 
     # PPTX
     elif ext.endswith(".pptx"):

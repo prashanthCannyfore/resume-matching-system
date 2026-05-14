@@ -12,23 +12,21 @@ MONTH_MAP = {
 }
 
 def _parse_date_to_ym(date_str: str):
-    """Parse a date string like 'Jan 2020', '2020', 'Present' into (year, month)."""
     s = date_str.strip().lower()
     if s in ("present", "current", "now"):
         now = datetime.now()
         return (now.year, now.month)
-    # Try "Month YYYY" or "YYYY Month"
     for month_name, month_num in MONTH_MAP.items():
         pattern = rf"\b{month_name}\b"
         if re.search(pattern, s):
-            year_match = re.search(r"\b(\d{{4}})\b", s)
+            year_match = re.search(r"\b(\d{4})\b", s)
             if year_match:
                 return (int(year_match.group(1)), month_num)
-    # Plain year only
     year_match = re.search(r"\b(\d{4})\b", s)
     if year_match:
-        return (int(year_match.group(1)), 6)  # assume mid-year if no month
+        return (int(year_match.group(1)), 6)
     return None
+
 
 def normalize_text(text: str) -> str:
     if not text:
@@ -42,7 +40,6 @@ def normalize_text(text: str) -> str:
 def extract_section(text: str, headers):
     if not text:
         return ""
-
     lines = text.splitlines()
     start = -1
     section_lines = []
@@ -74,10 +71,9 @@ def extract_section(text: str, headers):
     return "\n".join(section_lines).strip()
 
 
-def parse_skills_from_section(section_text: str):
+def parse_skills_from_section(section_text: str) -> list[str]:
     if not section_text:
         return []
-
     cleaned = []
     for line in section_text.splitlines():
         if ":" in line:
@@ -85,132 +81,117 @@ def parse_skills_from_section(section_text: str):
         line = line.replace("•", ",").replace("·", ",").replace("|", ",")
         parts = re.split(r"[,;/\\]+", line)
         for part in parts:
-            skill = part.strip().strip(".\\")
-            if skill:
-                cleaned.append(skill)
-
+            skill = part.strip().strip(".\\").strip()
+            if not skill:
+                continue
+            if len(skill.split()) > 5:
+                continue
+            lower = skill.lower()
+            if any(lower.startswith(p) for p in ("certification in", "certified", "experience in", "knowledge of", "proficient in", "expertise in", "hands-on", "skilled in")):
+                continue
+            cleaned.append(skill)
     return list(dict.fromkeys(cleaned))
 
 
+# ====================== SKILL NORMALIZATION ======================
 def normalize_skill_name(skill: str) -> str:
     if not skill:
         return ""
-    normalized = skill.lower().strip()
-    normalized = re.sub(r"\s+", " ", normalized)
 
-    aliases = {
-        "xd": "adobe xd",
-        "adobe xd": "adobe xd",
-        "figma": "figma",
-        "ux design": "ux design",
-        "ui/ux": "ux design",
-        "ui ux": "ux design",
-        "user experience": "ux design",
-        "photoshop": "adobe photoshop",
-        "illustrator": "adobe illustrator",
-        "indesign": "adobe indesign",
-        "after effects": "adobe after effects",
-        "adobe after effects": "adobe after effects",
-        "brand identity": "brand identity",
-        "typography": "typography",
-        "digital marketing": "digital marketing",
-        "mobile app": "mobile app",
-        "visual identity": "brand identity",
+    s = skill.lower().strip()
+    s = re.sub(r"\s+", " ", s)
+    s_stripped = re.sub(r"[\.\-]", "", s)
+
+    # Strong React matching
+    react_keywords = {"react", "reactjs", "react.js", "react js", "mern", "mernstack", "nextjs", "next.js"}
+    if any(k in s_stripped or k in s for k in react_keywords):
+        return "react"
+
+    ALIASES = {
+        "reactjs": "react", "react.js": "react", "react js": "react", "mern": "react",
+        "mernstack": "react", "nextjs": "react", "next.js": "react",
+        "nodejs": "node.js", "node.js": "node.js", "node js": "node.js",
+        "javascript": "javascript", "typescript": "typescript",
+        "vuejs": "vue", "angularjs": "angular",
+        "python3": "python", "java8": "java",
+        "postgres": "postgresql", "mongo": "mongodb",
+        "xd": "adobe xd", "ui/ux": "ux design", "ui ux": "ux design",
     }
 
-    if normalized in aliases:
-        return aliases[normalized]
+    if s in ALIASES:
+        return ALIASES[s]
+    if s_stripped in ALIASES:
+        return ALIASES[s_stripped]
 
-    return normalized
+    return s
 
 
 def normalize_skill_list(skills: list[str]) -> list[str]:
-    return [normalize_skill_name(skill) for skill in skills if skill]
+    normalized = [normalize_skill_name(skill) for skill in skills if skill]
+    return list(dict.fromkeys(normalized))
 
 
 async def extract_skills(text: str, db: AsyncSession = None):
-    skills_section = extract_section(text, ["skills", "technical skills", "toolset", "expertise"])
+    if not text:
+        return []
+
+    skills_section = extract_section(text, ["skills", "technical skills", "toolset", "expertise", "technologies"])
     if skills_section:
-        explicit_skills = parse_skills_from_section(skills_section)
-        if explicit_skills:
-            return explicit_skills
+        explicit = parse_skills_from_section(skills_section)
+        if explicit:
+            return normalize_skill_list(explicit)
 
     text_lower = normalize_text(text)
-    found_skills = set()
+    found = set()
 
-    # Database skills
+    if any(x in text_lower for x in ["react", "reactjs", "react.js", "mern", "next.js", "nextjs"]):
+        found.add("react")
+
+    scan_list = ["node.js", "nodejs", "python", "javascript", "typescript", "vue", "angular", "django", "fastapi", "aws"]
+    for kw in scan_list:
+        if kw in text_lower:
+            found.add(normalize_skill_name(kw))
+
     if db:
         try:
             result = await db.execute(select(Skill.name))
-            common_skills = [s.lower() for s in result.scalars().all()]
-            for skill in common_skills:
-                if skill in text_lower:
-                    found_skills.add(skill)
+            for skill_name in result.scalars().all():
+                if skill_name.lower() in text_lower:
+                    found.add(normalize_skill_name(skill_name))
         except:
             pass
 
-    # Very comprehensive fallback for resumes
-    fallback_skills = [
-        "react", "reactjs", "nodejs", "node.js", "javascript", "typescript", "redux", "vue", "angular",
-        "bootstrap", "mui", "tailwind", "html", "css", "python", "java", "c#", ".net", "asp.net",
-        "sql", "mysql", "postgresql", "mongodb", "redis", "aws", "azure", "docker", "kubernetes",
-        "git", "jenkins", "ci/cd", "microservices", "rest api", "figma", "adobe xd", "ui/ux", "ux design"
+    return sorted(list(found))
+
+
+def extract_total_experience(text: str) -> float:
+    if not text:
+        return 0.0
+
+    text_lower = text.lower()
+    explicit_patterns = [
+        r"total\s+experience\s*[:\-]?\s*(\d+\.?\d*)\+?\s*(?:years?|yrs?)",
+        r"(\d+\.?\d*)\+?\s*(?:years?|yrs?)\s*(?:of)?\s*(?:total|overall)?\s*experience",
+        r"(\d+\.?\d*)\+?\s*(?:years?|yrs?)\s*(?:exp|experience)",
     ]
 
-    for skill in fallback_skills:
-        if skill in text_lower:
-            found_skills.add(skill)
+    for pattern in explicit_patterns:
+        match = re.search(pattern, text_lower)
+        if match:
+            try:
+                return round(float(match.group(1)), 1)
+            except:
+                continue
 
-    return list(found_skills)
-
-
-def extract_total_experience(text: str):
-    if not text:
-        return 0
-
-    # 1. Try explicit "X years of experience" statement first
-    direct_match = re.search(r"total experience\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:years?|yrs?)", text, re.I)
-    if not direct_match:
-        direct_match = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*(?:years?|yrs?)\s*(?:of)?\s*(?:experience|exp)", text, re.I)
-    if direct_match:
+    simple_match = re.search(r"(\d+\.?\d*)\+?\s*(?:years?|yrs?)\b", text_lower)
+    if simple_match:
         try:
-            return float(direct_match.group(1))
-        except ValueError:
+            years = float(simple_match.group(1))
+            if 0 < years <= 30:
+                return round(years, 1)
+        except:
             pass
-
-    # 2. Extract work experience section only (exclude education dates)
-    work_text = text
-    edu_section = extract_section(text, ["education", "academic qualifications", "qualifications"])
-    if edu_section:
-        work_text = text.replace(edu_section, "")
-
-    # 3. Month-aware date range parsing
-    # Matches: "Jan 2020 – Present", "January 2020 - 2022", "2020 – Present", "2018–2020"
-    date_range_pattern = re.compile(
-        r"((?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
-        r"jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)?\s*\d{4})"
-        r"\s*[–—\-]+\s*"
-        r"(present|current|now|"
-        r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
-        r"jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)?\s*\d{4})",
-        re.I
-    )
-
-    ranges = date_range_pattern.findall(work_text)
-    total_months = 0
-
-    for start_str, end_str in ranges:
-        start = _parse_date_to_ym(start_str)
-        end = _parse_date_to_ym(end_str)
-        if start and end:
-            months = (end[0] - start[0]) * 12 + (end[1] - start[1])
-            if months > 0:
-                total_months += months
-
-    if total_months:
-        return round(total_months / 12, 1)
-
-    return 0
+    return 0.0
 
 
 def extract_education(text: str):
@@ -231,7 +212,6 @@ def extract_education(text: str):
         return "Master’s Degree"
     if "bachelor" in text_lower or "kalasalingam" in text_lower or any(word in text_lower for word in ["b.e", "btech", "b.tech", "bca", "mca"]):
         return "Bachelor’s Degree"
-
     return "Not mentioned"
 
 
@@ -244,10 +224,8 @@ def extract_experience_timeline(text: str):
     experience_section = extract_section(text, ["experience", "professional experience", "work experience"])
     if not experience_section:
         return []
-
     timeline = []
     lines = [line.strip() for line in experience_section.splitlines() if line.strip()]
-
     for line in lines:
         match = re.match(r"(.+?)\s*\|\s*(\d{4})\s*[–—-]\s*(present|current|\d{4})(.*)", line, re.I)
         if match:
@@ -256,21 +234,14 @@ def extract_experience_timeline(text: str):
             timeline.append(f"{title} ({date_range})")
         else:
             timeline.append(line)
-
     return timeline
 
 
 def extract_core_areas(text: str):
     text_lower = text.lower()
     candidates = [
-        ("UI/UX Design", "ui/ux"),
-        ("Brand Identity", "brand identity"),
-        ("Typography", "typography"),
-        ("Digital Marketing", "digital marketing"),
-        ("Mobile App UI/UX", "mobile app"),
-        ("Visual Identity", "visual identities"),
-        ("Campaign Design", "campaign"),
-        ("Social Media Design", "social media"),
+        ("UI/UX Design", "ui/ux"), ("Brand Identity", "brand identity"),
+        ("Typography", "typography"), ("Digital Marketing", "digital marketing"),
     ]
     return [label for label, keyword in candidates if keyword in text_lower]
 
@@ -283,21 +254,12 @@ def extract_design_tools(skills: list[str]):
 def extract_additional_strengths(text: str):
     strengths = []
     text_lower = text.lower()
-    brand_match = re.search(r"(\d+\+?\s*brands?[^\n]*)", text_lower)
-    if brand_match:
-        strengths.append(brand_match.group(1).strip().capitalize())
-    reach_match = re.search(r"(\d+\+?\s*m(?:illion)?\+?\s*(?:impressions|reach|views)[^\n]*)", text_lower)
-    if reach_match:
-        strengths.append(reach_match.group(1).strip().capitalize())
+    if re.search(r"\d+\+?\s*brands?", text_lower):
+        strengths.append("Work with multiple brands")
     if "mentored" in text_lower or "mentoring" in text_lower:
-        strengths.append("Mentoring and team leadership experience")
-    if "mobile app" in text_lower:
-        strengths.append("Experience designing mobile app user interfaces")
-    if "campaign" in text_lower and "led" in text_lower:
-        strengths.append("Led campaigns with measurable reach or impact")
+        strengths.append("Mentoring and team leadership")
     if any(word in text_lower for word in ["fmcg", "tech", "hospitality"]):
-        strengths.append("Domain exposure across multiple industries")
-
+        strengths.append("Domain exposure")
     return list(dict.fromkeys(strengths))
 
 
@@ -317,18 +279,12 @@ async def generate_resume_insight(text: str, db: AsyncSession = None) -> str:
 
     return (
         "Here’s a quick breakdown of the candidate:\n\n"
-        "🧑‍💼 Experience\n"
-        f"Total Experience: {total_experience} years\n"
-        "Timeline:\n"
-        f"{timeline_text}\n\n"
-        "🎯 Key Skills\n"
-        f"Design Tools: {design_text}\n"
-        "Core Areas:\n"
-        f"{core_text}\n\n"
-        "💡 Additional Strengths\n"
-        f"{strengths_text}\n\n"
-        "🎓 Education\n"
-        f"{education}"
+        f"🧑‍💼 Experience\nTotal Experience: {total_experience} years\n"
+        f"Timeline:\n{timeline_text}\n\n"
+        f"🎯 Key Skills\nDesign Tools: {design_text}\n"
+        f"Core Areas:\n{core_text}\n\n"
+        f"💡 Additional Strengths\n{strengths_text}\n\n"
+        f"🎓 Education\n{education}"
     )
 
 
